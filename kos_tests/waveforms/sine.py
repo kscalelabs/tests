@@ -187,9 +187,7 @@ async def run_sine_test(
 
 async def main() -> None:
     parser = argparse.ArgumentParser(description="Run sinusoidal test on leg motors")
-    parser.add_argument(
-        "--amplitude", type=float, default=20.0, help="Sine wave amplitude in degrees (default: 20.0)"
-    )
+    parser.add_argument("--amplitude", type=float, default=20.0, help="Sine wave amplitude in degrees (default: 20.0)")
     parser.add_argument("--frequency", type=float, default=0.5, help="Sine wave frequency in Hz (default: 0.5)")
     parser.add_argument("--duration", type=float, default=10.0, help="Test duration in seconds (default: 10.0)")
     parser.add_argument("--send_velocity", action="store_true", help="Include velocity commands")
@@ -198,15 +196,19 @@ async def main() -> None:
     collected_data = None
     try:
         async with pykos.KOS() as kos:
-            collected_data = await run_sine_test(
-                kos, args.amplitude, args.frequency, args.duration, args.send_velocity
-            )
+            collected_data = await run_sine_test(kos, args.amplitude, args.frequency, args.duration, args.send_velocity)
 
             if collected_data:
-                time_points, commanded_positions, actual_positions, commanded_velocities, actual_velocities = collected_data
+                time_points, commanded_positions, actual_positions, commanded_velocities, actual_velocities = (
+                    collected_data
+                )
                 create_motor_plots(
-                    time_points, commanded_positions, actual_positions,
-                    commanded_velocities, actual_velocities, args.send_velocity
+                    time_points,
+                    commanded_positions,
+                    actual_positions,
+                    commanded_velocities,
+                    actual_velocities,
+                    args.send_velocity,
                 )
 
         print("\nDisabling motors...")

@@ -215,10 +215,16 @@ async def main() -> None:
             )
 
             if collected_data:
-                time_points, commanded_positions, actual_positions, commanded_velocities, actual_velocities = collected_data
+                time_points, commanded_positions, actual_positions, commanded_velocities, actual_velocities = (
+                    collected_data
+                )
                 create_motor_plots(
-                    time_points, commanded_positions, actual_positions,
-                    commanded_velocities, actual_velocities, args.send_velocity
+                    time_points,
+                    commanded_positions,
+                    actual_positions,
+                    commanded_velocities,
+                    actual_velocities,
+                    args.send_velocity,
                 )
 
         print("\nDisabling motors...")
@@ -236,4 +242,3 @@ async def main() -> None:
 
 if __name__ == "__main__":
     asyncio.run(main())
-
