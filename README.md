@@ -13,5 +13,5 @@ Now you can run any of the tests!
 
 To run the example waveform tests:
 ```
-python -m kos_tests.run_tests --config kos_tests/example_config.yaml
+python -m kos_tests.run_tests --config configs/example_config.yaml
 ```
