@@ -26,7 +26,7 @@ async def run_sine_test(kos: pykos.KOS, test_config: TestConfig) -> tuple:
         if config.active_motors is not None
         else [motor_id for group in test_config.motor_groups.values() for motor_id in group.motor_ids]
     )
-    
+
     print(f"Active motors: {active_motors}")
     print(f"Motor groups: {test_config.motor_groups}")
 
@@ -63,7 +63,9 @@ async def run_sine_test(kos: pykos.KOS, test_config: TestConfig) -> tuple:
                             max_torque=group_config.params.max_torque,
                             torque_enabled=True,
                         )
-                        print(f"Configured motor {motor_id} with kp={group_config.params.kp}, kd={group_config.params.kd}")
+                        print(
+                            f"Configured motor {motor_id} with kp={group_config.params.kp}, kd={group_config.params.kd}"
+                        )
                     except Exception as e:
                         print(f"Failed to configure motor {motor_id}: {e}")
 
@@ -127,7 +129,7 @@ async def run_sine_test(kos: pykos.KOS, test_config: TestConfig) -> tuple:
             await asyncio.sleep(0.01)  # 100Hz control rate
 
         # Add debug print before returning
-        print(f"Data collection summary:")
+        print("Data collection summary:")
         print(f"Time points: {len(time_points)}")
         for motor_id in active_motors:
             print(f"Motor {motor_id}:")

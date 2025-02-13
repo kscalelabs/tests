@@ -1,6 +1,10 @@
+"""Utility functions for plotting motor responses."""
+
 import os
+from typing import Dict, List, Optional
+
 import matplotlib.pyplot as plt
-from typing import List, Dict, Optional
+
 
 def create_motor_plots(
     time_points: List[float],
@@ -11,14 +15,14 @@ def create_motor_plots(
     use_velocity: bool,
     motor_id_to_name: Dict[int, str],
     output_dir: str = ".",
-    test_name: str = "test"
+    test_name: str = "test",
 ) -> None:
     """Create and save plots for each motor's performance."""
     print("Creating plots in", output_dir, "...")
-    
+
     # Ensure the output directory exists
     os.makedirs(output_dir, exist_ok=True)
-    
+
     for motor_id, motor_name in motor_id_to_name.items():
         # Check that there is data for this motor
         if motor_id not in commanded_positions or len(commanded_positions[motor_id]) == 0:
@@ -46,7 +50,10 @@ def create_motor_plots(
         # Velocity subplot (if requested and data is present)
         if use_velocity and commanded_velocities is not None:
             if motor_id not in commanded_velocities or len(commanded_velocities[motor_id]) == 0:
-                print(f"Skipping velocity plot for motor {motor_id} ({motor_name}) because no velocity data was collected.")
+                print(
+                    f"Skipping velocity plot for motor {motor_id} ({motor_name}) "
+                    "because no velocity data was collected."
+                )
             elif len(time_points) != len(commanded_velocities[motor_id]):
                 print(f"Skipping velocity plot for motor {motor_id} ({motor_name}) due to mismatched data lengths.")
             else:
