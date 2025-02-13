@@ -14,12 +14,14 @@ async def run_tests(config_path: Path | None = None) -> None:
     for test_config in configs:
         print(f"\nRunning {test_config.waveform_type} test...")
         if test_config.waveform_type == "sine":
-            await sine.main(test_config.config)
+            await sine.main(test_config)
         elif test_config.waveform_type == "triangle":
-            await triangle.main(test_config.config)
+            await triangle.main(test_config)
+
 
 if __name__ == "__main__":
     import argparse
+
     parser = argparse.ArgumentParser(description="Run waveform tests")
     parser.add_argument("--config", type=Path, help="Path to test configuration file")
     args = parser.parse_args()

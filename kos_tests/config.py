@@ -11,6 +11,7 @@ import yaml
 @dataclass
 class MotorParams:
     """Control parameters for a motor group."""
+
     kp: float
     kd: float
     max_torque: float
@@ -19,6 +20,7 @@ class MotorParams:
 @dataclass
 class MotorGroupConfig:
     """Configuration for a group of motors."""
+
     params: MotorParams
     motor_ids: List[int]
 
@@ -26,6 +28,7 @@ class MotorGroupConfig:
 @dataclass
 class WaveformConfig:
     """Base configuration for waveform tests."""
+
     amplitude: float = 20.0
     frequency: float = 0.5
     duration: float = 10.0
@@ -36,6 +39,7 @@ class WaveformConfig:
 @dataclass
 class TestConfig:
     """Configuration for all waveform tests."""
+
     waveform_type: Literal["sine", "triangle"]
     config: WaveformConfig
     motor_groups: Dict[str, MotorGroupConfig]
