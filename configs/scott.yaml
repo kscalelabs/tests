@@ -1,0 +1,46 @@
+# Global motor group definitions
+motor_groups:
+  strong:
+    motor_ids: [31, 34, 41, 44]  # R04 motors
+    default_params:
+      kp: 200
+      kd: 30
+      max_torque: 80
+  medium:
+    motor_ids: [32, 33, 42, 43]  # R03 motors
+    default_params:
+      kp: 150
+      kd: 5
+      max_torque: 60
+  weak:
+    motor_ids: [35, 45]  # R02 motors
+    default_params:
+      kp: 40
+      kd: 5
+      max_torque: 17
+
+# Test configurations
+waveform_tests:
+  - type: triangle
+    amplitude: 15.0
+    frequency: 1.0
+    duration: 5.0
+    send_velocity: true
+
+  - type: triangle
+    amplitude: 15.0
+    frequency: 1.0
+    duration: 5.0
+    send_velocity: false
+
+  - type: sine
+    amplitude: 15.0
+    frequency: 1.0
+    duration: 5.0
+    send_velocity: true
+
+  - type: sine
+    amplitude: 15.0
+    frequency: 1.0
+    duration: 5.0
+    send_velocity: false

@@ -67,19 +67,21 @@ def load_config(config_path: Optional[Path] = None) -> List[TestConfig]:
             active_motors=test.get("active_motors", None),
         )
 
-        # Load motor group configurations
+        # Load motor group configurations, using global groups as defaults
         motor_groups = {}
-        for group_name, group_config in test.get("motor_groups", {}).items():
-            # Get motor IDs and default parameters from the global definition
-            group_def = global_motor_groups.get(group_name, {})
-            motor_ids = group_def.get("motor_ids", [])
+        for group_name, group_def in global_motor_groups.items():
+            # Get default parameters from global definition
             default_params = group_def.get("default_params", {})
+            motor_ids = group_def.get("motor_ids", [])
+
+            # Get test-specific overrides if they exist
+            test_group_config = test.get("motor_groups", {}).get(group_name, {})
 
             motor_groups[group_name] = MotorGroupConfig(
                 params=MotorParams(
-                    kp=group_config.get("kp", default_params.get("kp", 0)),
-                    kd=group_config.get("kd", default_params.get("kd", 0)),
-                    max_torque=group_config.get("max_torque", default_params.get("max_torque", 0)),
+                    kp=test_group_config.get("kp", default_params.get("kp", 0)),
+                    kd=test_group_config.get("kd", default_params.get("kd", 0)),
+                    max_torque=test_group_config.get("max_torque", default_params.get("max_torque", 0)),
                 ),
                 motor_ids=motor_ids,
             )

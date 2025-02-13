@@ -168,6 +168,7 @@ async def main(test_config: TestConfig) -> None:
                     test_config.config.send_velocity,
                     motor_id_to_name,
                     output_dir="plots",
+                    test_name=f"tri_vel_{test_config.config.send_velocity}",
                 )
 
         print("\nDisabling motors...")

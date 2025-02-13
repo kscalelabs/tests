@@ -26,6 +26,9 @@ async def run_sine_test(kos: pykos.KOS, test_config: TestConfig) -> tuple:
         if config.active_motors is not None
         else [motor_id for group in test_config.motor_groups.values() for motor_id in group.motor_ids]
     )
+    
+    print(f"Active motors: {active_motors}")
+    print(f"Motor groups: {test_config.motor_groups}")
 
     # Data collection dictionaries
     time_points = []
@@ -40,6 +43,7 @@ async def run_sine_test(kos: pykos.KOS, test_config: TestConfig) -> tuple:
         for motor_id in active_motors:
             try:
                 await kos.actuator.configure_actuator(actuator_id=motor_id, torque_enabled=False)
+                print(f"Disabled motor {motor_id}")
             except Exception as e:
                 print(f"Failed to disable motor {motor_id}: {e}")
 
@@ -48,6 +52,7 @@ async def run_sine_test(kos: pykos.KOS, test_config: TestConfig) -> tuple:
         # Configure motors with appropriate gains based on their groups
         print("Configuring motors...")
         for group_name, group_config in test_config.motor_groups.items():
+            print(f"Configuring group {group_name}: {group_config}")
             for motor_id in group_config.motor_ids:
                 if motor_id in active_motors:
                     try:
@@ -58,6 +63,7 @@ async def run_sine_test(kos: pykos.KOS, test_config: TestConfig) -> tuple:
                             max_torque=group_config.params.max_torque,
                             torque_enabled=True,
                         )
+                        print(f"Configured motor {motor_id} with kp={group_config.params.kp}, kd={group_config.params.kd}")
                     except Exception as e:
                         print(f"Failed to configure motor {motor_id}: {e}")
 
@@ -120,6 +126,14 @@ async def run_sine_test(kos: pykos.KOS, test_config: TestConfig) -> tuple:
 
             await asyncio.sleep(0.01)  # 100Hz control rate
 
+        # Add debug print before returning
+        print(f"Data collection summary:")
+        print(f"Time points: {len(time_points)}")
+        for motor_id in active_motors:
+            print(f"Motor {motor_id}:")
+            print(f"  Commanded positions: {len(commanded_positions[motor_id])}")
+            print(f"  Actual positions: {len(actual_positions[motor_id])}")
+
     except (KeyboardInterrupt, asyncio.CancelledError):
         print("\nTest interrupted!")
     finally:
@@ -154,6 +168,7 @@ async def main(test_config: TestConfig) -> None:
                     test_config.config.send_velocity,
                     motor_id_to_name,
                     output_dir="plots",
+                    test_name=f"sin_vel_{test_config.config.send_velocity}",
                 )
 
         print("\nDisabling motors...")
