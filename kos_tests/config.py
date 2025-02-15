@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Configuration management for KOS tests."""
 
 from dataclasses import dataclass, field
