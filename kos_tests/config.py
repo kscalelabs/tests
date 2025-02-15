@@ -3,9 +3,11 @@
 
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Literal
+from typing import Literal, TypeAlias
 
 import yaml
+
+ActuatorTestType: TypeAlias = Literal["sine", "triangle", "square", "piecewise"]
 
 
 @dataclass
@@ -26,8 +28,8 @@ class MotorGroupConfig:
 
 
 @dataclass
-class BaseTestConfig:
-    """Base configuration for all tests."""
+class BaseActuatorTestConfig:
+    """Base configuration for all actuator tests."""
 
     motor_groups: dict[str, MotorGroupConfig]
     send_velocity: bool = False
@@ -36,7 +38,7 @@ class BaseTestConfig:
 
 
 @dataclass
-class WaveformConfig(BaseTestConfig):
+class WaveformConfig(BaseActuatorTestConfig):
     """Configuration for waveform tests."""
 
     amplitude: float = 20.0
@@ -44,24 +46,38 @@ class WaveformConfig(BaseTestConfig):
 
 
 @dataclass
-class PiecewiseConfig(BaseTestConfig):
+class PiecewiseConfig(BaseActuatorTestConfig):
     """Configuration for a piecewise motion test."""
 
     positions: list[float] = field(default_factory=list)
 
 
 @dataclass
-class ActuatorTest:
+class BaseTestConfig:
+    """Base configuration for all tests."""
+
+    pass
+
+
+@dataclass
+class ActuatorTest(BaseTestConfig):
     """Configuration for an actuator test."""
 
-    test_type: Literal["sine", "triangle", "square", "piecewise"]
-    config: BaseTestConfig
+    test_type: ActuatorTestType
+    config: BaseActuatorTestConfig
 
 
-def load_config(config_path: Path | None = None) -> list[ActuatorTest]:
+@dataclass
+class TestSuite:
+    """Collection of all test configurations."""
+
+    actuator_tests: list[ActuatorTest]
+
+
+def load_config(config_path: Path | None = None) -> TestSuite:
     """Load test configurations from a YAML file."""
     if config_path is None:
-        return []  # Require an explicit config file
+        return TestSuite(actuator_tests=[])  # Empty test suite
 
     with open(config_path) as f:
         data = yaml.safe_load(f)
@@ -69,11 +85,13 @@ def load_config(config_path: Path | None = None) -> list[ActuatorTest]:
     # First, load the global motor groups definition
     global_motor_groups = data.get("motor_groups", {})
 
-    configs: list[ActuatorTest] = []
+    actuator_configs: list[ActuatorTest] = []
+
+    # Get the actuator tests section
+    actuator_tests = data.get("actuator_tests", {})
 
     # Load waveform tests
-    for test in data.get("waveform_tests", []):
-        # Load basic waveform configuration
+    for test in actuator_tests.get("waveform_tests", []):
         wave_config = WaveformConfig(
             amplitude=test.get("amplitude", 20.0),
             frequency=test.get("frequency", 0.5),
@@ -83,11 +101,10 @@ def load_config(config_path: Path | None = None) -> list[ActuatorTest]:
             motor_groups=_load_motor_groups(test, global_motor_groups),
         )
 
-        configs.append(ActuatorTest(test_type=test["type"], config=wave_config))
+        actuator_configs.append(ActuatorTest(test_type=test["type"], config=wave_config))
 
     # Load piecewise tests
-    for test in data.get("piecewise_tests", []):
-        # Load piecewise configuration
+    for test in actuator_tests.get("piecewise_tests", []):
         piecewise_config = PiecewiseConfig(
             positions=test["positions"],
             duration=test.get("duration", 5.0),
@@ -96,9 +113,9 @@ def load_config(config_path: Path | None = None) -> list[ActuatorTest]:
             motor_groups=_load_motor_groups(test, global_motor_groups),
         )
 
-        configs.append(ActuatorTest(test_type="piecewise", config=piecewise_config))
+        actuator_configs.append(ActuatorTest(test_type="piecewise", config=piecewise_config))
 
-    return configs
+    return TestSuite(actuator_tests=actuator_configs)
 
 
 def _load_motor_groups(test: dict, global_motor_groups: dict) -> dict[str, MotorGroupConfig]:

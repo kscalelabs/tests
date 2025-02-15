@@ -10,10 +10,11 @@ from kos_tests.config import load_config
 
 async def run_tests(config_path: Path | None = None) -> None:
     """Run all configured actuator tests."""
-    configs = load_config(config_path)
+    test_suite = load_config(config_path)
 
-    for test_config in configs:
-        print(f"\nRunning {test_config.test_type} test...")
+    # Run actuator tests
+    for test_config in test_suite.actuator_tests:
+        print(f"\nRunning actuator test: {test_config.test_type}")
         if test_config.test_type == "sine":
             await sine.main(test_config)
         elif test_config.test_type == "triangle":
@@ -27,7 +28,7 @@ async def run_tests(config_path: Path | None = None) -> None:
 if __name__ == "__main__":
     import argparse
 
-    parser = argparse.ArgumentParser(description="Run actuator tests")
+    parser = argparse.ArgumentParser(description="Run tests")
     parser.add_argument("--config", type=Path, help="Path to test configuration file")
     args = parser.parse_args()
 
