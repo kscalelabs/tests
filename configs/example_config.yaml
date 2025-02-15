@@ -19,36 +19,49 @@ motor_groups:
       kd: 5
       max_torque: 17
 
-# Test configurations
-waveform_tests:
-  - type: sine
-    amplitude: 20.0
-    frequency: 0.5
-    duration: 10.0
-    send_velocity: true
-    active_motors: [31, 32, 33]  # Only test these specific motors
-    motor_groups:
-      strong:  # Uses motor_ids from global definition
-        kp: 300  # Override default values
-        kd: 6
-        max_torque: 85
-      medium:
-        kp: 200
-        kd: 6
-        max_torque: 65
-      weak:
-        kp: 45
-        kd: 4
-        max_torque: 20
+  # Test configurations
 
-  - type: triangle
-    amplitude: 15.0
-    frequency: 1.0
-    duration: 5.0
-    send_velocity: false
-    # No active_motors specified = test all motors
-    motor_groups:
-      strong:
-        kp: 300
-        kd: 6
-        max_torque: 85
+actuator_tests:
+  waveform_tests:
+    - type: sine
+      amplitude: 20.0
+      frequency: 0.5
+      duration: 10.0
+      send_velocity: true
+      active_motors: [31, 32, 33]  # Only test these specific motors
+      motor_groups:
+        strong:  # Uses motor_ids from global definition
+          kp: 300  # Override default values
+          kd: 6
+          max_torque: 85
+        medium:
+          kp: 200
+          kd: 6
+          max_torque: 65
+        weak:
+          kp: 45
+          kd: 4
+          max_torque: 20
+
+    - type: triangle
+      amplitude: 15.0
+      frequency: 1.0
+      duration: 5.0
+      send_velocity: false
+      # No active_motors specified = test all motors
+      motor_groups:
+        strong:
+          kp: 300
+          kd: 6
+          max_torque: 85
+  
+  piecewise_tests:
+    - positions: [0, 10, 0, -10, 0]
+      duration: 5.0
+      send_velocity: true
+      active_motors: [31, 32, 33]
+      motor_groups:
+        strong:
+          kp: 300
+          kd: 6
+          max_torque: 85

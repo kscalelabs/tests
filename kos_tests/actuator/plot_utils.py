@@ -5,7 +5,7 @@ from typing import Dict
 
 import matplotlib.pyplot as plt
 
-from kos_tests.waveforms.logger import TestData
+from kos_tests.actuator.logger import TestData
 
 
 def create_motor_plots(

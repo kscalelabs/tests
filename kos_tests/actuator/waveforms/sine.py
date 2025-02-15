@@ -1,34 +1,37 @@
-"""Script to stress test the leg motors with a step wave.
+"""Script to stress test the leg motors with a sinusoidal wave.
 
-This script will configure the leg motors with the appropriate gains and then move them in a step motion
-between 0° and 5°.
+This script will configure the leg motors with the appropriate gains and then move them in a sinusoidal motion.
 """
 
 import argparse
 import asyncio
+import math
 import time
 
 import pykos
 from pykos.services.actuator import ActuatorCommand
 
-from kos_tests.config import MotorGroupConfig, MotorParams, TestConfig, WaveformConfig
-from kos_tests.waveforms.logger import TestData
-from kos_tests.waveforms.plot_utils import create_motor_plots
+from kos_tests.actuator.logger import TestData
+from kos_tests.actuator.plot_utils import create_motor_plots
+from kos_tests.config import ActuatorTest, MotorGroupConfig, MotorParams, WaveformConfig
 
 
-async def run_step_test(kos: pykos.KOS, test_config: TestConfig) -> TestData | None:
-    """Run step motion test on configured motors."""
+async def run_sine_test(kos: pykos.KOS, test_config: ActuatorTest) -> TestData | None:
+    """Run sine wave motion test on configured motors."""
     config = test_config.config
+
+    if not isinstance(config, WaveformConfig):
+        raise ValueError("Config must be a WaveformConfig")
 
     # Get active motors from config or use all motors from all groups
     active_motors = (
         config.active_motors
         if config.active_motors is not None
-        else [motor_id for group in test_config.motor_groups.values() for motor_id in group.motor_ids]
+        else [motor_id for group in test_config.config.motor_groups.values() for motor_id in group.motor_ids]
     )
 
     print(f"Active motors: {active_motors}")
-    print(f"Motor groups: {test_config.motor_groups}")
+    print(f"Motor groups: {test_config.config.motor_groups}")
 
     # Initialize test data
     test_data = TestData(send_velocity=config.send_velocity)
@@ -47,7 +50,7 @@ async def run_step_test(kos: pykos.KOS, test_config: TestConfig) -> TestData | N
 
         # Configure motors with appropriate gains based on their groups
         print("Configuring motors...")
-        for group_name, group_config in test_config.motor_groups.items():
+        for group_name, group_config in test_config.config.motor_groups.items():
             print(f"Configuring group {group_name}: {group_config}")
             for motor_id in group_config.motor_ids:
                 if motor_id in active_motors:
@@ -65,8 +68,8 @@ async def run_step_test(kos: pykos.KOS, test_config: TestConfig) -> TestData | N
                     except Exception as e:
                         print(f"Failed to configure motor {motor_id}: {e}")
 
-        print("Starting step test with:")
-        print(f"  Step amplitude: {config.amplitude}°")
+        print("Starting sine wave test with:")
+        print(f"  Amplitude: ±{config.amplitude}°")
         print(f"  Frequency: {config.frequency} Hz")
         print(f"  Duration: {config.duration} s")
 
@@ -75,13 +78,10 @@ async def run_step_test(kos: pykos.KOS, test_config: TestConfig) -> TestData | N
             t = time.time() - start_time
             test_data.add_time_point(t)
 
-            # Calculate step position
-            period = 1.0 / config.frequency
-            cycle_position = (t % period) / period
-
-            # Step between 0° and amplitude
-            position = config.amplitude if cycle_position < 0.5 else 0.0
-            velocity = 0.0 if config.send_velocity else None
+            # Calculate sine wave position and velocity
+            angular_freq = 2 * math.pi * config.frequency
+            position = config.amplitude * math.sin(angular_freq * t)
+            velocity = config.amplitude * angular_freq * math.cos(angular_freq * t) if config.send_velocity else None
 
             # Prepare commands and log commanded values
             commands = []
@@ -128,19 +128,19 @@ async def run_step_test(kos: pykos.KOS, test_config: TestConfig) -> TestData | N
     return test_data
 
 
-async def main(test_config: TestConfig) -> None:
-    """Run step test with given configuration."""
+async def main(test_config: ActuatorTest) -> None:
+    """Run sinusoidal test with given configuration."""
     try:
         async with pykos.KOS() as kos:
-            test_data = await run_step_test(kos, test_config)
+            test_data = await run_sine_test(kos, test_config)
 
             if test_data is not None:
-                test_data.save(f"square_vel_{test_config.config.send_velocity}.json")
+                test_data.save(f"sine_vel_{test_config.config.send_velocity}.json")
 
                 # Create motor ID to name mapping for plots
                 motor_id_to_name = {
                     motor_id: f"{group_name}_{i}"
-                    for group_name, group in test_config.motor_groups.items()
+                    for group_name, group in test_config.config.motor_groups.items()
                     for i, motor_id in enumerate(group.motor_ids)
                 }
 
@@ -148,7 +148,7 @@ async def main(test_config: TestConfig) -> None:
                     test_data,
                     motor_id_to_name,
                     output_dir="plots",
-                    test_name=f"step_vel_{test_config.config.send_velocity}",
+                    test_name=f"sin_vel_{test_config.config.send_velocity}",
                 )
 
         print("\nDisabling motors...")
@@ -156,7 +156,7 @@ async def main(test_config: TestConfig) -> None:
             active_motors = (
                 test_config.config.active_motors
                 if test_config.config.active_motors is not None
-                else [motor_id for group in test_config.motor_groups.values() for motor_id in group.motor_ids]
+                else [motor_id for group in test_config.config.motor_groups.values() for motor_id in group.motor_ids]
             )
             for motor_id in active_motors:
                 try:
@@ -170,30 +170,30 @@ async def main(test_config: TestConfig) -> None:
 
 
 if __name__ == "__main__":
-    # For command line usage, create a basic TestConfig
-    parser = argparse.ArgumentParser(description="Run step test on leg motors")
-    parser.add_argument("--frequency", type=float, default=0.5)
-    parser.add_argument("--duration", type=float, default=10.0)
-    parser.add_argument("--send_velocity", action="store_true")
+    parser = argparse.ArgumentParser(description="Run sinusoidal test on leg motors")
+    parser.add_argument("--amplitude", type=float, default=20.0, help="Sine wave amplitude in degrees (default: 20.0)")
+    parser.add_argument("--frequency", type=float, default=0.5, help="Sine wave frequency in Hz (default: 0.5)")
+    parser.add_argument("--duration", type=float, default=10.0, help="Test duration in seconds (default: 10.0)")
+    parser.add_argument("--send_velocity", action="store_true", help="Include velocity commands")
     args = parser.parse_args()
 
-    # Create a basic test config for command-line usage
+    motor_groups = {
+        "strong": MotorGroupConfig(params=MotorParams(kp=250, kd=5, max_torque=80), motor_ids=[31, 34, 41, 44]),
+        "medium": MotorGroupConfig(params=MotorParams(kp=150, kd=5, max_torque=60), motor_ids=[32, 33, 42, 43]),
+        "weak": MotorGroupConfig(params=MotorParams(kp=40, kd=5, max_torque=17), motor_ids=[35, 45]),
+    }
+
     config = WaveformConfig(
-        amplitude=5.0,  # Fixed at 5 degrees for step test
+        amplitude=args.amplitude,
         frequency=args.frequency,
         duration=args.duration,
         send_velocity=args.send_velocity,
+        motor_groups=motor_groups,
     )
 
-    # Use default motor groups from example config
-    test_config = TestConfig(
-        waveform_type="square",
+    test_config = ActuatorTest(
+        test_type="sine",
         config=config,
-        motor_groups={
-            "strong": MotorGroupConfig(params=MotorParams(kp=250, kd=5, max_torque=80), motor_ids=[31, 34, 41, 44]),
-            "medium": MotorGroupConfig(params=MotorParams(kp=150, kd=5, max_torque=60), motor_ids=[32, 33, 42, 43]),
-            "weak": MotorGroupConfig(params=MotorParams(kp=40, kd=5, max_torque=17), motor_ids=[35, 45]),
-        },
     )
 
     asyncio.run(main(test_config))
