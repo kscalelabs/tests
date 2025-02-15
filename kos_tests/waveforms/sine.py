@@ -60,8 +60,7 @@ async def run_sine_test(kos: pykos.KOS, test_config: TestConfig) -> TestData | N
                             torque_enabled=True,
                         )
                         print(
-                            f"Configured motor {motor_id} with kp={group_config.params.kp}, "
-                            f"kd={group_config.params.kd}"
+                            f"Configured motor {motor_id} with kp={group_config.params.kp}, kd={group_config.params.kd}"
                         )
                     except Exception as e:
                         print(f"Failed to configure motor {motor_id}: {e}")

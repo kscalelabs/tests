@@ -60,8 +60,7 @@ async def run_step_test(kos: pykos.KOS, test_config: TestConfig) -> TestData | N
                             torque_enabled=True,
                         )
                         print(
-                            f"Configured motor {motor_id} with kp={group_config.params.kp}, "
-                            f"kd={group_config.params.kd}"
+                            f"Configured motor {motor_id} with kp={group_config.params.kp}, kd={group_config.params.kd}"
                         )
                     except Exception as e:
                         print(f"Failed to configure motor {motor_id}: {e}")
@@ -183,12 +182,12 @@ if __name__ == "__main__":
         amplitude=5.0,  # Fixed at 5 degrees for step test
         frequency=args.frequency,
         duration=args.duration,
-        send_velocity=args.send_velocity
+        send_velocity=args.send_velocity,
     )
 
     # Use default motor groups from example config
     test_config = TestConfig(
-        waveform_type="step",
+        waveform_type="square",
         config=config,
         motor_groups={
             "strong": MotorGroupConfig(params=MotorParams(kp=250, kd=5, max_torque=80), motor_ids=[31, 34, 41, 44]),
@@ -198,6 +197,3 @@ if __name__ == "__main__":
     )
 
     asyncio.run(main(test_config))
-
-
-
