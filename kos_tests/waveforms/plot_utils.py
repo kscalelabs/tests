@@ -1,18 +1,15 @@
 """Utility functions for plotting motor responses."""
 
 import os
-from typing import Dict, List, Optional
+from typing import Dict
 
 import matplotlib.pyplot as plt
 
+from kos_tests.waveforms.logger import TestData
+
 
 def create_motor_plots(
-    time_points: List[float],
-    commanded_positions: Dict[int, List[float]],
-    actual_positions: Dict[int, List[float]],
-    commanded_velocities: Optional[Dict[int, List[float]]],
-    actual_velocities: Dict[int, List[float]],
-    use_velocity: bool,
+    test_data: TestData,
     motor_id_to_name: Dict[int, str],
     output_dir: str = ".",
     test_name: str = "test",
@@ -23,47 +20,37 @@ def create_motor_plots(
     # Ensure the output directory exists
     os.makedirs(output_dir, exist_ok=True)
 
-    for motor_id, motor_name in motor_id_to_name.items():
-        # Check that there is data for this motor
-        if motor_id not in commanded_positions or len(commanded_positions[motor_id]) == 0:
-            print(f"Skipping motor {motor_id} ({motor_name}) because no commanded position data was collected.")
-            continue
+    # Validate data before plotting
+    errors = test_data.validate_data()
+    if errors:
+        print("Data validation errors:")
+        for error in errors:
+            print(f"  {error}")
+        return
 
-        if len(time_points) != len(commanded_positions[motor_id]):
-            print(
-                f"Skipping motor {motor_id} ({motor_name}) because the number of time points ({len(time_points)}) "
-                f"does not match the number of commanded position points ({len(commanded_positions[motor_id])})."
-            )
-            continue
+    for motor_id, motor_data in test_data.motors.items():
+        motor_name = motor_id_to_name.get(motor_id, f"motor_{motor_id}")
 
         plt.figure(figsize=(10, 6))
 
         # Position subplot
         plt.subplot(2, 1, 1)
-        plt.plot(time_points, commanded_positions[motor_id], label="Commanded Position", color="blue")
-        plt.plot(time_points, actual_positions[motor_id], label="Actual Position", color="red")
+        plt.plot(test_data.time_points, motor_data.commanded_positions, label="Commanded Position", color="blue")
+        plt.plot(test_data.time_points, motor_data.actual_positions, label="Actual Position", color="red")
         plt.title(f"Motor {motor_name} (ID: {motor_id}) Response")
         plt.ylabel("Position (degrees)")
         plt.grid(True)
         plt.legend(loc="upper right")
 
-        # Velocity subplot (if requested and data is present)
-        if use_velocity and commanded_velocities is not None:
-            if motor_id not in commanded_velocities or len(commanded_velocities[motor_id]) == 0:
-                print(
-                    f"Skipping velocity plot for motor {motor_id} ({motor_name}) "
-                    "because no velocity data was collected."
-                )
-            elif len(time_points) != len(commanded_velocities[motor_id]):
-                print(f"Skipping velocity plot for motor {motor_id} ({motor_name}) due to mismatched data lengths.")
-            else:
-                plt.subplot(2, 1, 2)
-                plt.plot(time_points, commanded_velocities[motor_id], label="Commanded Velocity", color="green")
-                plt.plot(time_points, actual_velocities[motor_id], label="Actual Velocity", color="orange")
-                plt.xlabel("Time (s)")
-                plt.ylabel("Velocity (deg/s)")
-                plt.grid(True)
-                plt.legend(loc="upper right")
+        # Velocity subplot (if data is present)
+        if test_data.send_velocity and motor_data.commanded_velocities is not None:
+            plt.subplot(2, 1, 2)
+            plt.plot(test_data.time_points, motor_data.commanded_velocities, label="Commanded Velocity", color="green")
+            plt.plot(test_data.time_points, motor_data.actual_velocities, label="Actual Velocity", color="orange")
+            plt.xlabel("Time (s)")
+            plt.ylabel("Velocity (deg/s)")
+            plt.grid(True)
+            plt.legend(loc="upper right")
         else:
             plt.xlabel("Time (s)")
 

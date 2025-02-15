@@ -8,16 +8,16 @@ Currently, it seems to die at 10Hz and 20° amplitude.
 import argparse
 import asyncio
 import time
-from collections import defaultdict
 
 import pykos
 from pykos.services.actuator import ActuatorCommand
 
 from kos_tests.config import MotorGroupConfig, MotorParams, TestConfig, WaveformConfig
+from kos_tests.waveforms.logger import TestData
 from kos_tests.waveforms.plot_utils import create_motor_plots
 
 
-async def run_triangle_test(kos: pykos.KOS, test_config: TestConfig) -> tuple:
+async def run_triangle_test(kos: pykos.KOS, test_config: TestConfig) -> TestData | None:
     """Run triangle wave motion test on configured motors."""
     config = test_config.config
 
@@ -28,12 +28,11 @@ async def run_triangle_test(kos: pykos.KOS, test_config: TestConfig) -> tuple:
         else [motor_id for group in test_config.motor_groups.values() for motor_id in group.motor_ids]
     )
 
-    # Data collection dictionaries
-    time_points = []
-    commanded_positions = defaultdict(list)
-    actual_positions = defaultdict(list)
-    commanded_velocities: dict[int, list[float]] | None = defaultdict(list) if config.send_velocity else None
-    actual_velocities = defaultdict(list)
+    print(f"Active motors: {active_motors}")
+    print(f"Motor groups: {test_config.motor_groups}")
+
+    # Initialize test data
+    test_data = TestData(send_velocity=config.send_velocity)
 
     try:
         # First disable all motors
@@ -41,6 +40,7 @@ async def run_triangle_test(kos: pykos.KOS, test_config: TestConfig) -> tuple:
         for motor_id in active_motors:
             try:
                 await kos.actuator.configure_actuator(actuator_id=motor_id, torque_enabled=False)
+                print(f"Disabled motor {motor_id}")
             except Exception as e:
                 print(f"Failed to disable motor {motor_id}: {e}")
 
@@ -48,7 +48,8 @@ async def run_triangle_test(kos: pykos.KOS, test_config: TestConfig) -> tuple:
 
         # Configure motors with appropriate gains based on their groups
         print("Configuring motors...")
-        for _, group_config in test_config.motor_groups.items():
+        for group_name, group_config in test_config.motor_groups.items():
+            print(f"Configuring group {group_name}: {group_config}")
             for motor_id in group_config.motor_ids:
                 if motor_id in active_motors:
                     try:
@@ -59,6 +60,10 @@ async def run_triangle_test(kos: pykos.KOS, test_config: TestConfig) -> tuple:
                             max_torque=group_config.params.max_torque,
                             torque_enabled=True,
                         )
+                        print(
+                            f"Configured motor {motor_id} with kp={group_config.params.kp}, "
+                            f"kd={group_config.params.kd}"
+                        )
                     except Exception as e:
                         print(f"Failed to configure motor {motor_id}: {e}")
 
@@ -67,11 +72,10 @@ async def run_triangle_test(kos: pykos.KOS, test_config: TestConfig) -> tuple:
         print(f"  Frequency: {config.frequency} Hz")
         print(f"  Duration: {config.duration} s")
 
-        # Rest of the function remains the same, just update motor_id loops to use active_motors
         start_time = time.time()
         while time.time() - start_time < config.duration:
             t = time.time() - start_time
-            time_points.append(t)
+            test_data.add_time_point(t)
 
             # Calculate triangle wave position and velocity
             period = 1.0 / config.frequency
@@ -90,7 +94,7 @@ async def run_triangle_test(kos: pykos.KOS, test_config: TestConfig) -> tuple:
                 position = (cycle_position - 1.0) * 4 * config.amplitude
                 velocity = 4 * config.amplitude * config.frequency if config.send_velocity else None
 
-            # Prepare commands for active motors
+            # Prepare commands and log commanded values
             commands = []
             for motor_id in active_motors:
                 command: ActuatorCommand = {"actuator_id": motor_id, "position": position}
@@ -98,14 +102,7 @@ async def run_triangle_test(kos: pykos.KOS, test_config: TestConfig) -> tuple:
                     assert velocity is not None
                     command["velocity"] = velocity
                 commands.append(command)
-
-            # Record commanded values
-            for motor_id in active_motors:
-                commanded_positions[motor_id].append(position)
-                if config.send_velocity:
-                    assert velocity is not None
-                    assert commanded_velocities is not None
-                    commanded_velocities[motor_id].append(velocity)
+                test_data.log_command(motor_id, position, velocity)
 
             # Send commands and get state
             try:
@@ -114,10 +111,9 @@ async def run_triangle_test(kos: pykos.KOS, test_config: TestConfig) -> tuple:
                     kos.actuator.get_actuators_state(active_motors),
                 )
 
-                # Record actual positions and velocities
+                # Log actual states
                 for state in states.states:
-                    actual_positions[state.actuator_id].append(state.position)
-                    actual_velocities[state.actuator_id].append(state.velocity)
+                    test_data.log_state(state.actuator_id, state.position, state.velocity)
 
                 # Print status
                 print("\033[K", end="")
@@ -136,21 +132,21 @@ async def run_triangle_test(kos: pykos.KOS, test_config: TestConfig) -> tuple:
 
     except (KeyboardInterrupt, asyncio.CancelledError):
         print("\nTest interrupted!")
+        return None
     finally:
         print("\n" * (len(active_motors) + 2))
-        return time_points, commanded_positions, actual_positions, commanded_velocities, actual_velocities
+
+    return test_data
 
 
 async def main(test_config: TestConfig) -> None:
     """Run triangle wave test with given configuration."""
     try:
         async with pykos.KOS() as kos:
-            collected_data = await run_triangle_test(kos, test_config)
+            test_data = await run_triangle_test(kos, test_config)
 
-            if collected_data:
-                time_points, commanded_positions, actual_positions, commanded_velocities, actual_velocities = (
-                    collected_data
-                )
+            if test_data is not None:
+                test_data.save(f"triangle_vel_{test_config.config.send_velocity}.json")
 
                 # Create motor ID to name mapping for plots
                 motor_id_to_name = {
@@ -160,12 +156,7 @@ async def main(test_config: TestConfig) -> None:
                 }
 
                 create_motor_plots(
-                    time_points,
-                    commanded_positions,
-                    actual_positions,
-                    commanded_velocities,
-                    actual_velocities,
-                    test_config.config.send_velocity,
+                    test_data,
                     motor_id_to_name,
                     output_dir="plots",
                     test_name=f"tri_vel_{test_config.config.send_velocity}",
