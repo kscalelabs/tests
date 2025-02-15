@@ -19,8 +19,7 @@ motor_groups:
       kd: 5
       max_torque: 17
 
-  # Test configurations
-
+# Test configurations
 actuator_tests:
   waveform_tests:
     - type: sine
@@ -49,6 +48,18 @@ actuator_tests:
       duration: 5.0
       send_velocity: false
       # No active_motors specified = test all motors
+      motor_groups:
+        strong:
+          kp: 300
+          kd: 6
+          max_torque: 85
+
+    - type: square
+      amplitude: 5.0  # Fixed at 5 degrees for square wave
+      frequency: 0.5
+      duration: 10.0
+      send_velocity: true
+      active_motors: [31, 32]
       motor_groups:
         strong:
           kp: 300
