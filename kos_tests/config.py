@@ -3,7 +3,7 @@
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, List, Literal, Optional
+from typing import Literal
 
 import yaml
 
@@ -22,7 +22,7 @@ class MotorGroupConfig:
     """Configuration for a group of motors."""
 
     params: MotorParams
-    motor_ids: List[int]
+    motor_ids: list[int]
 
 
 @dataclass
@@ -33,19 +33,19 @@ class WaveformConfig:
     frequency: float = 0.5
     duration: float = 10.0
     send_velocity: bool = False
-    active_motors: Optional[List[int]] = None  # If None, use all motors
+    active_motors: list[int] | None = None  # If None, use all motors
 
 
 @dataclass
 class TestConfig:
     """Configuration for all waveform tests."""
 
-    waveform_type: Literal["sine", "triangle"]
+    waveform_type: Literal["sine", "triangle", "square"]
     config: WaveformConfig
-    motor_groups: Dict[str, MotorGroupConfig]
+    motor_groups: dict[str, MotorGroupConfig]
 
 
-def load_config(config_path: Optional[Path] = None) -> List[TestConfig]:
+def load_config(config_path: Path | None = None) -> list[TestConfig]:
     """Load test configurations from a YAML file."""
     if config_path is None:
         return []  # Require an explicit config file
