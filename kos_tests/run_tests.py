@@ -4,7 +4,7 @@ import asyncio
 from pathlib import Path
 
 from kos_tests.config import load_config
-from kos_tests.waveforms import sine, triangle
+from kos_tests.waveforms import sine, square, triangle
 
 
 async def run_tests(config_path: Path | None = None) -> None:
@@ -17,6 +17,8 @@ async def run_tests(config_path: Path | None = None) -> None:
             await sine.main(test_config)
         elif test_config.waveform_type == "triangle":
             await triangle.main(test_config)
+        elif test_config.waveform_type == "square":
+            await square.main(test_config)
 
 
 if __name__ == "__main__":
